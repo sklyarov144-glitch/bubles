@@ -18,7 +18,8 @@ const COLORS_ALL = [
 const SAVE = {
   bestScore: "bubble_best_score_v2",
   maxLevel: "bubble_max_level_v2",
-  sound: "bubble_sound_v2"
+  sound: "bubble_sound_v2",
+  language: "bubble_language_v2"
 };
 
 const I18N = {
@@ -94,11 +95,83 @@ const I18N = {
     howtoLine4: "of the same color.",
     howtoLine5: "Don't let bubbles reach",
     howtoLine6: "the red warning line.",
-    back: "Back"
+    back: "Back",
+    settings: "Settings",
+    language: "Language",
+    russian: "Русский",
+    english: "English",
+    turkish: "Türkçe",
+    close: "Close"
+  },
+  tr: {
+    gameTitleLine1: "Baloncuk", gameTitleLine2: "Atışı", gameSubtitle1: "Nişan al, ateş et ve eşleştir", gameSubtitle2: "Aynı renkten 3+ balon",
+    play: "▶ Oyna", levels: "Seviyeler", scoreMode: "Skor Modu", howToPlay: "Nasıl Oynanır", soundOn: "Ses: AÇIK", soundOff: "Ses: KAPALI",
+    bestScore: "En İyi Skor", score: "Skor", level: "Seviye", target: "Hedef", popsTarget: "Patlat", next: "sonraki", pause: "Duraklatıldı", gamePaused: "Oyun durduruldu",
+    resume: "Devam Et", restart: "Yeniden Başlat", backToMenu: "Menü", levelComplete: "Seviye Tamamlandı!", nextLevel: "Sonraki Seviye", victory: "Zafer!", gameOver: "Oyun Bitti",
+    playAgain: "Tekrar Oyna", restartLevel: "Seviyeyi Yeniden Başlat", record: "Rekor", howtoLine1: "Fare veya parmakla nişan al.", howtoLine2: "Ateş etmek için bırak.",
+    howtoLine3: "Aynı renkten 3 veya daha", howtoLine4: "fazla balonu eşleştir.", howtoLine5: "Balonların kırmızı çizgiye", howtoLine6: "ulaşmasına izin verme.",
+    back: "Geri", settings: "Ayarlar", language: "Dil", russian: "Русский", english: "English", turkish: "Türkçe", close: "Kapat"
+  },
+  ru: {
+    gameTitleLine1: "Шариковый",
+    gameTitleLine2: "Выстрел",
+    gameSubtitle1: "Целься, стреляй и собирай",
+    gameSubtitle2: "3+ шарика одного цвета",
+    play: "▶ Играть",
+    levels: "Уровни",
+    scoreMode: "Режим на счёт",
+    howToPlay: "Как играть",
+    soundOn: "Звук: ВКЛ",
+    soundOff: "Звук: ВЫКЛ",
+    bestScore: "Лучший счёт",
+    score: "Счёт",
+    level: "Уровень",
+    target: "Цель",
+    popsTarget: "Лопнуть",
+    next: "след.",
+    pause: "Пауза",
+    gamePaused: "Игра остановлена",
+    resume: "Продолжить",
+    restart: "Заново",
+    backToMenu: "В меню",
+    levelComplete: "Уровень пройден!",
+    nextLevel: "Следующий уровень",
+    victory: "Победа!",
+    gameOver: "Игра окончена",
+    playAgain: "Играть снова",
+    restartLevel: "Заново уровень",
+    record: "Рекорд",
+    howtoLine1: "Целься мышкой или пальцем.",
+    howtoLine2: "Отпусти, чтобы выстрелить.",
+    howtoLine3: "Собирай 3 и больше шарика",
+    howtoLine4: "одного цвета.",
+    howtoLine5: "Не дай шарикам дойти",
+    howtoLine6: "до красной линии.",
+    back: "Назад",
+    settings: "Настройки",
+    language: "Язык",
+    russian: "Русский",
+    english: "English",
+    turkish: "Türkçe",
+    close: "Закрыть"
   }
 };
 
 let currentLang = "ru";
+
+function normalizeLang(rawLang) {
+  const sdkLang = String(rawLang || "").toLowerCase();
+  if (/^(ru|be|uk|kk|uz)/.test(sdkLang)) return "ru";
+  if (sdkLang.startsWith("tr")) return "tr";
+  return "en";
+}
+
+function initLanguage() {
+  const saved = localStorage.getItem(SAVE.language);
+  currentLang = saved && I18N[saved] ? saved : "en";
+  document.documentElement.lang = currentLang;
+}
+
 
 function t(key) {
   return I18N[currentLang]?.[key] || I18N.ru[key] || key;
@@ -140,6 +213,8 @@ let sdkReadyNotified = false;
 let audioCtx = null;
 let audioNodes = new Set();
 let isAdShowing = false;
+let audioUnlocked = false;
+let preSettingsState = null;
 let resultScreenStartedAt = 0;
 let resultOverlayAlpha = 1;
 let resultAdShown = false;
@@ -399,6 +474,7 @@ function playSound(type) {
     const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextCtor) return;
     if (!audioCtx) audioCtx = new AudioContextCtor();
+    if (audioCtx.state === "suspended") audioCtx.resume();
     const oscillator = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
@@ -1312,6 +1388,9 @@ function checkGameOver() {
 function pauseGame() { if (gameState === "playing") { gameState = "paused"; stopAllAudio(); }}
 function resumeGame() { if (gameState === "paused" && !isAdShowing) gameState = "playing"; }
 function togglePause() { if (gameState === "playing") pauseGame(); else if (gameState === "paused") resumeGame(); }
+function openSettings(){ if(gameState==="settings") return; preSettingsState=gameState; if(gameState==="playing") pauseGame(); gameState="settings"; }
+function closeSettings(){ gameState = preSettingsState === "playing" ? "paused" : (preSettingsState || "menu"); preSettingsState=null; }
+function setLanguage(lang){ if(!I18N[lang]) return; currentLang=lang; localStorage.setItem(SAVE.language, lang); document.documentElement.lang=currentLang; }
 
 function restartCurrentMode() {
   if (gameMode === "levels") {
@@ -1501,38 +1580,33 @@ function getCanvasPointerPosition(event) {
   };
 }
 
-canvas.addEventListener("mousedown", event => {
+function unlockAudio() {
+  if (audioUnlocked) return;
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextCtor) return;
+  if (!audioCtx) audioCtx = new AudioContextCtor();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  audioUnlocked = true;
+}
+
+canvas.addEventListener("pointerdown", event => {
+  event.preventDefault();
+  unlockAudio();
   const pos = getCanvasPointerPosition(event);
   handlePointerDown(pos.x, pos.y);
 });
-
-canvas.addEventListener("mousemove", event => {
-  const pos = getCanvasPointerPosition(event);
-  handlePointerMove(pos.x, pos.y);
-});
-
-canvas.addEventListener("mouseup", event => {
-  const pos = getCanvasPointerPosition(event);
-  handlePointerUp(pos.x, pos.y);
-});
-
-canvas.addEventListener("touchstart", event => {
-  event.preventDefault();
-  const pos = getCanvasPointerPosition(event);
-  handlePointerDown(pos.x, pos.y);
-}, { passive: false });
-
-canvas.addEventListener("touchmove", event => {
+canvas.addEventListener("pointermove", event => {
   event.preventDefault();
   const pos = getCanvasPointerPosition(event);
   handlePointerMove(pos.x, pos.y);
-}, { passive: false });
-
-canvas.addEventListener("touchend", event => {
+});
+const handlePointerEnd = event => {
   event.preventDefault();
   const pos = getCanvasPointerPosition(event);
   handlePointerUp(pos.x, pos.y);
-}, { passive: false });
+};
+canvas.addEventListener("pointerup", handlePointerEnd);
+canvas.addEventListener("pointercancel", handlePointerEnd);
 
 window.addEventListener("contextmenu", event => {
   event.preventDefault();
@@ -1602,6 +1676,7 @@ aimX = width / 2;
 aimY = height / 2;
 
 createInitialBubbles(6);
+initLanguage();
 initYandexSDK().finally(() => notifyYandexReady());
 requestAnimationFrame(gameLoop);
 
@@ -1610,10 +1685,9 @@ async function initYandexSDK() {
   try {
     if (window.YaGames && typeof window.YaGames.init === "function") {
       ysdk = await window.YaGames.init();
-      const sdkLang = ysdk?.environment?.i18n?.lang?.toLowerCase?.();
-      if (sdkLang) {
-        currentLang = /^(ru|be|uk|kk|uz)/.test(sdkLang) ? "ru" : "en";
-      }
+      const saved = localStorage.getItem(SAVE.language);
+      if (!saved) currentLang = normalizeLang(ysdk?.environment?.i18n?.lang);
+      document.documentElement.lang = currentLang;
     }
   } catch (e) { ysdk = null; }
 }
