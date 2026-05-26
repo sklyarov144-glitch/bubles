@@ -58,7 +58,13 @@ const I18N = {
     howtoLine4: "одного цвета.",
     howtoLine5: "Не дай шарикам дойти",
     howtoLine6: "до красной линии.",
-    back: "Назад"
+    back: "Назад",
+    settings: "Настройки",
+    language: "Язык",
+    russian: "Русский",
+    english: "English",
+    turkish: "Türkçe",
+    close: "Закрыть"
   },
   en: {
     gameTitleLine1: "Bubble",
@@ -104,56 +110,47 @@ const I18N = {
     close: "Close"
   },
   tr: {
-    gameTitleLine1: "Baloncuk", gameTitleLine2: "Atışı", gameSubtitle1: "Nişan al, ateş et ve eşleştir", gameSubtitle2: "Aynı renkten 3+ balon",
-    play: "▶ Oyna", levels: "Seviyeler", scoreMode: "Skor Modu", howToPlay: "Nasıl Oynanır", soundOn: "Ses: AÇIK", soundOff: "Ses: KAPALI",
-    bestScore: "En İyi Skor", score: "Skor", level: "Seviye", target: "Hedef", popsTarget: "Patlat", next: "sonraki", pause: "Duraklatıldı", gamePaused: "Oyun durduruldu",
-    resume: "Devam Et", restart: "Yeniden Başlat", backToMenu: "Menü", levelComplete: "Seviye Tamamlandı!", nextLevel: "Sonraki Seviye", victory: "Zafer!", gameOver: "Oyun Bitti",
-    playAgain: "Tekrar Oyna", restartLevel: "Seviyeyi Yeniden Başlat", record: "Rekor", howtoLine1: "Fare veya parmakla nişan al.", howtoLine2: "Ateş etmek için bırak.",
-    howtoLine3: "Aynı renkten 3 veya daha", howtoLine4: "fazla balonu eşleştir.", howtoLine5: "Balonların kırmızı çizgiye", howtoLine6: "ulaşmasına izin verme.",
-    back: "Geri", settings: "Ayarlar", language: "Dil", russian: "Русский", english: "English", turkish: "Türkçe", close: "Kapat"
-  },
-  ru: {
-    gameTitleLine1: "Шариковый",
-    gameTitleLine2: "Выстрел",
-    gameSubtitle1: "Целься, стреляй и собирай",
-    gameSubtitle2: "3+ шарика одного цвета",
-    play: "▶ Играть",
-    levels: "Уровни",
-    scoreMode: "Режим на счёт",
-    howToPlay: "Как играть",
-    soundOn: "Звук: ВКЛ",
-    soundOff: "Звук: ВЫКЛ",
-    bestScore: "Лучший счёт",
-    score: "Счёт",
-    level: "Уровень",
-    target: "Цель",
-    popsTarget: "Лопнуть",
-    next: "след.",
-    pause: "Пауза",
-    gamePaused: "Игра остановлена",
-    resume: "Продолжить",
-    restart: "Заново",
-    backToMenu: "В меню",
-    levelComplete: "Уровень пройден!",
-    nextLevel: "Следующий уровень",
-    victory: "Победа!",
-    gameOver: "Игра окончена",
-    playAgain: "Играть снова",
-    restartLevel: "Заново уровень",
-    record: "Рекорд",
-    howtoLine1: "Целься мышкой или пальцем.",
-    howtoLine2: "Отпусти, чтобы выстрелить.",
-    howtoLine3: "Собирай 3 и больше шарика",
-    howtoLine4: "одного цвета.",
-    howtoLine5: "Не дай шарикам дойти",
-    howtoLine6: "до красной линии.",
-    back: "Назад",
-    settings: "Настройки",
-    language: "Язык",
+    gameTitleLine1: "Baloncuk",
+    gameTitleLine2: "Atışı",
+    gameSubtitle1: "Nişan al, ateş et ve eşleştir",
+    gameSubtitle2: "Aynı renkten 3+ balon",
+    play: "▶ Oyna",
+    levels: "Seviyeler",
+    scoreMode: "Skor Modu",
+    howToPlay: "Nasıl Oynanır",
+    soundOn: "Ses: AÇIK",
+    soundOff: "Ses: KAPALI",
+    bestScore: "En İyi Skor",
+    score: "Skor",
+    level: "Seviye",
+    target: "Hedef",
+    popsTarget: "Patlat",
+    next: "sonraki",
+    pause: "Duraklat",
+    gamePaused: "Oyun duraklatıldı",
+    resume: "Devam Et",
+    restart: "Yeniden Başlat",
+    backToMenu: "Menü",
+    levelComplete: "Seviye Tamamlandı!",
+    nextLevel: "Sonraki Seviye",
+    victory: "Zafer!",
+    gameOver: "Oyun Bitti",
+    playAgain: "Tekrar Oyna",
+    restartLevel: "Seviyeyi Yeniden Başlat",
+    record: "Rekor",
+    howtoLine1: "Fare veya parmakla nişan al.",
+    howtoLine2: "Ateş etmek için bırak.",
+    howtoLine3: "Aynı renkten 3 veya daha",
+    howtoLine4: "fazla balonu eşleştir.",
+    howtoLine5: "Balonlar kırmızı çizgiye",
+    howtoLine6: "ulaşmadan önce temizle.",
+    back: "Geri",
+    settings: "Ayarlar",
+    language: "Dil",
     russian: "Русский",
     english: "English",
     turkish: "Türkçe",
-    close: "Закрыть"
+    close: "Kapat"
   }
 };
 
@@ -168,7 +165,7 @@ function normalizeLang(rawLang) {
 
 function initLanguage() {
   const saved = localStorage.getItem(SAVE.language);
-  currentLang = saved && I18N[saved] ? saved : "en";
+  currentLang = saved && I18N[saved] ? saved : normalizeLang(window.navigator?.language);
   document.documentElement.lang = currentLang;
 }
 
@@ -218,6 +215,7 @@ let preSettingsState = null;
 let resultScreenStartedAt = 0;
 let resultOverlayAlpha = 1;
 let resultAdShown = false;
+let uiScale = 1;
 const RESULT_OVERLAY_DELAY_MS = 520;
 const RESULT_OVERLAY_FADE_MS = 380;
 
@@ -226,6 +224,8 @@ function resizeCanvas() {
 
   const displayWidth = Math.min(window.innerWidth, 560);
   const displayHeight = window.innerHeight;
+  const isNarrow = displayWidth <= 390;
+  uiScale = isNarrow ? Math.max(0.82, displayWidth / 390) : 1;
 
   canvas.width = Math.floor(displayWidth * pixelRatio);
   canvas.height = Math.floor(displayHeight * pixelRatio);
@@ -237,7 +237,7 @@ function resizeCanvas() {
   width = displayWidth;
   height = displayHeight;
 
-  const nextBubbleRadius = Math.max(15, Math.min(22, width / 24));
+  const nextBubbleRadius = Math.max(13, Math.min(22, width / 24)) * uiScale;
   const nextColWidth = nextBubbleRadius * 2;
   const nextRowHeight = nextBubbleRadius * 1.72;
 
@@ -695,7 +695,12 @@ function drawTopUI() {
   ctx.save();
 
   ctx.fillStyle = "rgba(0,0,0,0.25)";
-  ctx.fillRect(0, 0, width, 62);
+  const topBarHeight = Math.max(58, 62 * uiScale);
+  const smallButtonW = Math.round(44 * uiScale);
+  const smallButtonH = Math.round(38 * uiScale);
+  const gap = Math.round(8 * uiScale);
+  const buttonsY = 10;
+  ctx.fillRect(0, 0, width, topBarHeight);
 
   ctx.fillStyle = "white";
   ctx.textBaseline = "middle";
@@ -722,8 +727,13 @@ function drawTopUI() {
     ctx.fillText(t("scoreMode"), width / 2, 34);
   }
 
-  drawSmallButton(width - 112, 12, 48, 40, gameState === "paused" ? "▶" : "Ⅱ");
-  drawSmallButton(width - 56, 12, 48, 40, soundEnabled ? "🔊" : "🔇");
+  const settingsX = width - (smallButtonW * 3 + gap * 3);
+  const pauseX = width - (smallButtonW * 2 + gap * 2);
+  const soundX = width - (smallButtonW + gap);
+  const canShowSettings = gameState !== "levelcomplete" && gameState !== "gameover";
+  if (canShowSettings) drawSmallButton(settingsX, buttonsY, smallButtonW, smallButtonH, "⚙️");
+  drawSmallButton(pauseX, buttonsY, smallButtonW, smallButtonH, gameState === "paused" ? "▶" : "Ⅱ");
+  drawSmallButton(soundX, buttonsY, smallButtonW, smallButtonH, soundEnabled ? "🔊" : "🔇");
 
   ctx.restore();
 }
@@ -921,6 +931,46 @@ function drawPaused() {
   drawBigButton(bx, by + buttonHeight + buttonGap, 240, buttonHeight, t("restart"));
   drawBigButton(bx, by + (buttonHeight + buttonGap) * 2, 240, buttonHeight, t("backToMenu"));
 
+  ctx.restore();
+}
+
+
+function drawSettings() {
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillRect(0, 0, width, height);
+
+  const panelW = Math.min(360, width - 30);
+  const panelH = Math.min(390, height - 80);
+  const panelX = (width - panelW) / 2;
+  const panelY = (height - panelH) / 2;
+
+  ctx.fillStyle = "rgba(8, 22, 45, 0.95)";
+  roundRect(panelX, panelY, panelW, panelH, 18);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "white";
+  ctx.font = `bold ${Math.floor(32 * uiScale)}px Arial`;
+  ctx.fillText(t("settings"), width / 2, panelY + 52);
+  ctx.font = `${Math.floor(18 * uiScale)}px Arial`;
+  ctx.fillText(t("language"), width / 2, panelY + 88);
+
+  const bw = panelW - 56;
+  const bh = Math.round(50 * uiScale);
+  const bx = panelX + 28;
+  const labels = [["ru", t("russian")], ["en", t("english")], ["tr", t("turkish")]];
+
+  labels.forEach((item, idx) => {
+    const by = panelY + 112 + idx * (bh + 14);
+    const selected = currentLang === item[0];
+    drawBigButton(bx, by, bw, bh, `${selected ? "✓ " : ""}${item[1]}`);
+  });
+
+  drawBigButton(width / 2 - 110, panelY + panelH - 72, 220, 52, t("close"));
   ctx.restore();
 }
 
@@ -1410,13 +1460,27 @@ function handlePointerDown(x, y) {
   aimX = x;
   aimY = y;
 
-  if (isInside(x, y, width - 112, 12, 48, 40) && gameState !== "menu" && gameState !== "howto") {
+  const smallButtonW = Math.round(44 * uiScale);
+  const smallButtonH = Math.round(38 * uiScale);
+  const gap = Math.round(8 * uiScale);
+  const settingsX = width - (smallButtonW * 3 + gap * 3);
+  const pauseX = width - (smallButtonW * 2 + gap * 2);
+  const soundX = width - (smallButtonW + gap);
+
+  const canShowSettings = gameState !== "levelcomplete" && gameState !== "gameover";
+  if (canShowSettings && isInside(x, y, settingsX, 10, smallButtonW, smallButtonH) && gameState !== "howto") {
+    pointerStartedOnButton = true;
+    openSettings();
+    return;
+  }
+
+  if (isInside(x, y, pauseX, 10, smallButtonW, smallButtonH) && gameState !== "menu" && gameState !== "howto" && gameState !== "settings") {
     pointerStartedOnButton = true;
     togglePause();
     return;
   }
 
-  if (isInside(x, y, width - 56, 12, 48, 40) && gameState !== "howto") {
+  if (isInside(x, y, soundX, 10, smallButtonW, smallButtonH) && gameState !== "howto" && gameState !== "settings") {
     pointerStartedOnButton = true;
     soundEnabled = !soundEnabled;
     localStorage.setItem(SAVE.sound, soundEnabled ? "on" : "off");
@@ -1459,6 +1523,22 @@ function handlePointerDown(x, y) {
       gameState = "menu";
       return;
     }
+  }
+
+  if (gameState === "settings") {
+    const panelW = Math.min(360, width - 30);
+    const panelH = Math.min(390, height - 80);
+    const panelX = (width - panelW) / 2;
+    const panelY = (height - panelH) / 2;
+    const bw = panelW - 56;
+    const bh = Math.round(50 * uiScale);
+    const bx = panelX + 28;
+
+    if (isInside(x, y, bx, panelY + 112, bw, bh)) { pointerStartedOnButton = true; setLanguage("ru"); return; }
+    if (isInside(x, y, bx, panelY + 126 + bh, bw, bh)) { pointerStartedOnButton = true; setLanguage("en"); return; }
+    if (isInside(x, y, bx, panelY + 140 + bh * 2, bw, bh)) { pointerStartedOnButton = true; setLanguage("tr"); return; }
+    if (isInside(x, y, width / 2 - 110, panelY + panelH - 72, 220, 52)) { pointerStartedOnButton = true; closeSettings(); return; }
+    return;
   }
 
   if (gameState === "levelcomplete") {
@@ -1653,6 +1733,26 @@ function render() {
 
   if (gameState === "paused") {
     drawPaused();
+  }
+
+  if (gameState === "settings") {
+    drawSettings();
+  }
+
+  if (gameState === "settings") {
+    const panelW = Math.min(360, width - 30);
+    const panelH = Math.min(390, height - 80);
+    const panelX = (width - panelW) / 2;
+    const panelY = (height - panelH) / 2;
+    const bw = panelW - 56;
+    const bh = Math.round(50 * uiScale);
+    const bx = panelX + 28;
+
+    if (isInside(x, y, bx, panelY + 112, bw, bh)) { pointerStartedOnButton = true; setLanguage("ru"); return; }
+    if (isInside(x, y, bx, panelY + 126 + bh, bw, bh)) { pointerStartedOnButton = true; setLanguage("en"); return; }
+    if (isInside(x, y, bx, panelY + 140 + bh * 2, bw, bh)) { pointerStartedOnButton = true; setLanguage("tr"); return; }
+    if (isInside(x, y, width / 2 - 110, panelY + panelH - 72, 220, 52)) { pointerStartedOnButton = true; closeSettings(); return; }
+    return;
   }
 
   if (gameState === "levelcomplete") {
