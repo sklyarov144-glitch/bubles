@@ -851,7 +851,8 @@ function drawMenu() {
   drawBigButton(bx, by, 240, 66, t("play"));
   drawBigButton(bx, by + 80, 240, 56, `${t("levels")}: ${maxOpenedLevel}/100`);
   drawBigButton(bx, by + 150, 240, 52, t("howToPlay"));
-  drawBigButton(bx, by + 214, 240, 52, soundEnabled ? t("soundOn") : t("soundOff"));
+  drawBigButton(bx, by + 214, 240, 52, t("settings"));
+  drawBigButton(bx, by + 278, 240, 52, soundEnabled ? t("soundOn") : t("soundOff"));
 
   ctx.font = "15px Arial";
   ctx.fillStyle = "rgba(255,255,255,0.7)";
@@ -1563,6 +1564,12 @@ function handlePointerDown(x, y) {
     }
 
     if (isInside(x, y, bx, by + 214, 240, 52)) {
+      pointerStartedOnButton = true;
+      openSettings();
+      return;
+    }
+
+    if (isInside(x, y, bx, by + 278, 240, 52)) {
       pointerStartedOnButton = true;
       toggleSound();
       return;
