@@ -21,6 +21,89 @@ const SAVE = {
   sound: "bubble_sound_v2"
 };
 
+const I18N = {
+  ru: {
+    gameTitleLine1: "Шариковый",
+    gameTitleLine2: "Выстрел",
+    gameSubtitle1: "Целься, стреляй и собирай",
+    gameSubtitle2: "3+ шарика одного цвета",
+    play: "▶ Играть",
+    levels: "Уровни",
+    scoreMode: "Режим на счёт",
+    howToPlay: "Как играть",
+    soundOn: "Звук: ВКЛ",
+    soundOff: "Звук: ВЫКЛ",
+    bestScore: "Лучший счёт",
+    score: "Счёт",
+    level: "Уровень",
+    target: "Цель",
+    popsTarget: "Лопнуть",
+    next: "след.",
+    pause: "Пауза",
+    gamePaused: "Игра остановлена",
+    resume: "Продолжить",
+    restart: "Заново",
+    backToMenu: "В меню",
+    levelComplete: "Уровень пройден!",
+    nextLevel: "Следующий уровень",
+    victory: "Победа!",
+    gameOver: "Игра окончена",
+    playAgain: "Играть снова",
+    restartLevel: "Заново уровень",
+    record: "Рекорд",
+    howtoLine1: "Целься мышкой или пальцем.",
+    howtoLine2: "Отпусти, чтобы выстрелить.",
+    howtoLine3: "Собирай 3 и больше шарика",
+    howtoLine4: "одного цвета.",
+    howtoLine5: "Не дай шарикам дойти",
+    howtoLine6: "до красной линии.",
+    back: "Назад"
+  },
+  en: {
+    gameTitleLine1: "Bubble",
+    gameTitleLine2: "Shooter",
+    gameSubtitle1: "Aim, shoot and match",
+    gameSubtitle2: "3+ bubbles of one color",
+    play: "▶ Play",
+    levels: "Levels",
+    scoreMode: "Score Mode",
+    howToPlay: "How to Play",
+    soundOn: "Sound: ON",
+    soundOff: "Sound: OFF",
+    bestScore: "Best Score",
+    score: "Score",
+    level: "Level",
+    target: "Target",
+    popsTarget: "Pop",
+    next: "next",
+    pause: "Pause",
+    gamePaused: "Game paused",
+    resume: "Resume",
+    restart: "Restart",
+    backToMenu: "Menu",
+    levelComplete: "Level Complete!",
+    nextLevel: "Next Level",
+    victory: "Victory!",
+    gameOver: "Game Over",
+    playAgain: "Play Again",
+    restartLevel: "Retry Level",
+    record: "Record",
+    howtoLine1: "Aim with mouse or finger.",
+    howtoLine2: "Release to shoot.",
+    howtoLine3: "Match 3 or more bubbles",
+    howtoLine4: "of the same color.",
+    howtoLine5: "Don't let bubbles reach",
+    howtoLine6: "the red warning line.",
+    back: "Back"
+  }
+};
+
+let currentLang = "ru";
+
+function t(key) {
+  return I18N[currentLang]?.[key] || I18N.ru[key] || key;
+}
+
 let bubbleRadius = 20;
 let colWidth = 40;
 let rowHeight = 34;
@@ -103,48 +186,18 @@ window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
 function generateLevelConfig(level) {
-  let colorCount = 4;
-  let initialRows = 5;
-  let descentSpeed = 2.2;
-  let targetScore = 300;
-  let targetPops = 20;
-
-  if (level <= 10) {
-    colorCount = 4;
-    initialRows = 4 + Math.floor(level / 5);
-    descentSpeed = 1.1 + level * 0.05;
-    targetScore = 180 + level * 30;
-    targetPops = 12 + level * 2;
-  } else if (level <= 30) {
-    colorCount = 4 + Math.floor((level - 10) / 12);
-    initialRows = 5 + Math.floor((level - 10) / 8);
-    descentSpeed = 1.8 + (level - 10) * 0.08;
-    targetScore = 450 + level * 35;
-    targetPops = 30 + level * 2;
-  } else if (level <= 60) {
-    colorCount = 5 + Math.floor((level - 30) / 18);
-    initialRows = 7 + Math.floor((level - 30) / 12);
-    descentSpeed = 3.5 + (level - 30) * 0.09;
-    targetScore = 900 + level * 45;
-    targetPops = 55 + level * 2;
-  } else if (level <= 85) {
-    colorCount = 6;
-    initialRows = 9 + Math.floor((level - 60) / 13);
-    descentSpeed = 6.3 + (level - 60) * 0.11;
-    targetScore = 1800 + level * 55;
-    targetPops = 100 + level * 2;
-  } else {
-    colorCount = 7;
-    initialRows = 11;
-    descentSpeed = 9 + (level - 85) * 0.16;
-    targetScore = 3100 + level * 65;
-    targetPops = 155 + level * 2;
-  }
-
-  const goalType = level % 2 === 0 ? "score" : "pops";
+  // Параметры уровня рассчитаны под среднюю длительность прохождения 1–2 минуты.
+  const clampedLevel = Math.max(1, Math.min(100, level));
+  const progress = (clampedLevel - 1) / 99;
+  const colorCount = Math.min(7, 4 + Math.floor(progress * 3.2));
+  const initialRows = Math.min(10, 4 + Math.floor(progress * 6));
+  const descentSpeed = 1.05 + progress * 1.55;
+  const targetPops = Math.round(14 + clampedLevel * 1.2 + progress * 22);
+  const targetScore = Math.round(220 + clampedLevel * 44 + progress * 1500);
+  const goalType = clampedLevel % 2 === 0 ? "score" : "pops";
 
   return {
-    level,
+    level: clampedLevel,
     colorCount,
     initialRows,
     descentSpeed,
@@ -474,7 +527,7 @@ function drawShooter() {
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.font = `${Math.floor(bubbleRadius * 0.75)}px Arial`;
     ctx.textAlign = "center";
-    ctx.fillText("след.", width - bubbleRadius * 2.2, height - bubbleRadius * 3.7);
+    ctx.fillText(t("next"), width - bubbleRadius * 2.2, height - bubbleRadius * 3.7);
     drawBubbleAt(width - bubbleRadius * 2.2, height - bubbleRadius * 2.35, nextBubble.color, bubbleRadius * 0.65);
   }
 
@@ -516,24 +569,24 @@ function drawTopUI() {
 
   ctx.font = "17px Arial";
   ctx.textAlign = "left";
-  ctx.fillText(`Счёт: ${score}`, 14, 22);
+  ctx.fillText(`${t("score")}: ${score}`, 14, 22);
 
   if (gameMode === "levels" && levelConfig) {
-    ctx.fillText(`Уровень: ${currentLevel}/100`, 14, 45);
+    ctx.fillText(`${t("level")}: ${currentLevel}/100`, 14, 45);
   } else if (gameMode === "score") {
-    ctx.fillText(`Рекорд: ${bestScore}`, 14, 45);
+    ctx.fillText(`${t("record")}: ${bestScore}`, 14, 45);
   }
 
   ctx.textAlign = "center";
 
   if (gameMode === "levels" && levelConfig) {
     const goalText = levelConfig.goalType === "score"
-      ? `Цель: ${score}/${levelConfig.targetScore}`
-      : `Лопнуть: ${poppedThisLevel}/${levelConfig.targetPops}`;
+      ? `${t("target")}: ${score}/${levelConfig.targetScore}`
+      : `${t("popsTarget")}: ${poppedThisLevel}/${levelConfig.targetPops}`;
 
     ctx.fillText(goalText, width / 2, 34);
   } else if (gameMode === "score") {
-    ctx.fillText("Режим на счёт", width / 2, 34);
+    ctx.fillText(t("scoreMode"), width / 2, 34);
   }
 
   drawSmallButton(width - 112, 12, 48, 40, gameState === "paused" ? "▶" : "Ⅱ");
@@ -641,25 +694,25 @@ function drawMenu() {
   titleGradient.addColorStop(0.5, "#dce8ff");
   titleGradient.addColorStop(1, "#ffffff");
   ctx.fillStyle = titleGradient;
-  ctx.fillText("Шариковый", width / 2, height * 0.21);
-  ctx.fillText("Выстрел", width / 2, height * 0.21 + 45);
+  ctx.fillText(t("gameTitleLine1"), width / 2, height * 0.21);
+  ctx.fillText(t("gameTitleLine2"), width / 2, height * 0.21 + 45);
 
   ctx.font = "17px Arial";
   ctx.fillStyle = "rgba(240,245,255,0.92)";
-  ctx.fillText("Целься, стреляй и собирай", width / 2, height * 0.21 + 88);
-  ctx.fillText("3+ шарика одного цвета", width / 2, height * 0.21 + 112);
+  ctx.fillText(t("gameSubtitle1"), width / 2, height * 0.21 + 88);
+  ctx.fillText(t("gameSubtitle2"), width / 2, height * 0.21 + 112);
 
   const bx = width / 2 - 120;
   const by = height * 0.46;
 
-  drawBigButton(bx, by, 240, 56, `Уровни: ${maxOpenedLevel}/100`);
-  drawBigButton(bx, by + 70, 240, 56, "Режим на счёт");
-  drawBigButton(bx, by + 140, 240, 52, "Как играть");
-  drawBigButton(bx, by + 204, 240, 52, soundEnabled ? "Звук: ВКЛ" : "Звук: ВЫКЛ");
+  drawBigButton(bx, by, 240, 66, t("play"));
+  drawBigButton(bx, by + 80, 240, 56, `${t("levels")}: ${maxOpenedLevel}/100`);
+  drawBigButton(bx, by + 150, 240, 52, t("howToPlay"));
+  drawBigButton(bx, by + 214, 240, 52, soundEnabled ? t("soundOn") : t("soundOff"));
 
   ctx.font = "15px Arial";
   ctx.fillStyle = "rgba(255,255,255,0.7)";
-  ctx.fillText(`Лучший счёт: ${bestScore}`, width / 2, height - 34);
+  ctx.fillText(`${t("bestScore")}: ${bestScore}`, width / 2, height - 34);
 
   ctx.restore();
 }
@@ -673,25 +726,25 @@ function drawHowToPlay() {
   ctx.textAlign = "center";
   ctx.fillStyle = "white";
   ctx.font = "bold 30px Arial";
-  ctx.fillText("Как играть", width / 2, height * 0.18);
+  ctx.fillText(t("howToPlay"), width / 2, height * 0.18);
 
   ctx.font = "18px Arial";
   ctx.fillStyle = "rgba(255,255,255,0.9)";
 
   const lines = [
-    "Целься мышкой или пальцем.",
-    "Отпусти, чтобы выстрелить.",
-    "Собирай 3 и больше шарика",
-    "одного цвета.",
-    "Не дай шарикам дойти",
-    "до красной линии."
+    t("howtoLine1"),
+    t("howtoLine2"),
+    t("howtoLine3"),
+    t("howtoLine4"),
+    t("howtoLine5"),
+    t("howtoLine6")
   ];
 
   lines.forEach((line, index) => {
     ctx.fillText(line, width / 2, height * 0.29 + index * 31);
   });
 
-  drawBigButton(width / 2 - 100, height * 0.72, 200, 54, "Назад");
+  drawBigButton(width / 2 - 100, height * 0.72, 200, 54, t("back"));
 
   ctx.restore();
 }
@@ -718,18 +771,18 @@ function drawPaused() {
   ctx.textAlign = "center";
   ctx.fillStyle = "white";
   ctx.font = "bold 34px Arial";
-  ctx.fillText("Пауза", width / 2, panelY + 58);
+  ctx.fillText(t("pause"), width / 2, panelY + 58);
 
   ctx.font = "17px Arial";
   ctx.fillStyle = "rgba(255,255,255,0.84)";
-  ctx.fillText("Игра остановлена", width / 2, panelY + 89);
+  ctx.fillText(t("gamePaused"), width / 2, panelY + 89);
 
   const bx = width / 2 - 120;
   const by = panelY + 116;
 
-  drawBigButton(bx, by, 240, 54, "Продолжить");
-  drawBigButton(bx, by + 68, 240, 54, "Заново");
-  drawBigButton(bx, by + 136, 240, 54, "В меню");
+  drawBigButton(bx, by, 240, 54, t("resume"));
+  drawBigButton(bx, by + 68, 240, 54, t("restart"));
+  drawBigButton(bx, by + 136, 240, 54, t("backToMenu"));
 
   ctx.restore();
 }
@@ -743,22 +796,22 @@ function drawLevelComplete() {
   ctx.textAlign = "center";
   ctx.fillStyle = "white";
   ctx.font = "bold 34px Arial";
-  ctx.fillText("Уровень пройден!", width / 2, height * 0.34);
+  ctx.fillText(t("levelComplete"), width / 2, height * 0.34);
 
   ctx.font = "21px Arial";
-  ctx.fillText(`Уровень ${currentLevel}`, width / 2, height * 0.34 + 45);
-  ctx.fillText(`Счёт: ${score}`, width / 2, height * 0.34 + 78);
+  ctx.fillText(`${t("level")} ${currentLevel}`, width / 2, height * 0.34 + 45);
+  ctx.fillText(`${t("score")}: ${score}`, width / 2, height * 0.34 + 78);
 
   const bx = width / 2 - 120;
   const by = height * 0.56;
 
   if (currentLevel < 100) {
-    drawBigButton(bx, by, 240, 56, "Следующий уровень");
+    drawBigButton(bx, by, 240, 56, t("nextLevel"));
   } else {
-    drawBigButton(bx, by, 240, 56, "Победа!");
+    drawBigButton(bx, by, 240, 56, t("victory"));
   }
 
-  drawBigButton(bx, by + 72, 240, 52, "В меню");
+  drawBigButton(bx, by + 72, 240, 52, t("backToMenu"));
 
   ctx.restore();
 }
@@ -772,20 +825,20 @@ function drawGameOver() {
   ctx.textAlign = "center";
   ctx.fillStyle = "white";
   ctx.font = "bold 34px Arial";
-  ctx.fillText("Игра окончена", width / 2, height * 0.34);
+  ctx.fillText(t("gameOver"), width / 2, height * 0.34);
 
   ctx.font = "21px Arial";
-  ctx.fillText(`Счёт: ${score}`, width / 2, height * 0.34 + 50);
+  ctx.fillText(`${t("score")}: ${score}`, width / 2, height * 0.34 + 50);
 
   if (gameMode === "score") {
-    ctx.fillText(`Рекорд: ${bestScore}`, width / 2, height * 0.34 + 82);
+    ctx.fillText(`${t("record")}: ${bestScore}`, width / 2, height * 0.34 + 82);
   }
 
   const bx = width / 2 - 120;
   const by = height * 0.57;
 
-  drawBigButton(bx, by, 240, 56, gameMode === "levels" ? "Заново уровень" : "Играть снова");
-  drawBigButton(bx, by + 72, 240, 52, "В меню");
+  drawBigButton(bx, by, 240, 56, gameMode === "levels" ? t("restartLevel") : t("playAgain"));
+  drawBigButton(bx, by + 72, 240, 52, t("backToMenu"));
 
   ctx.restore();
 }
@@ -841,13 +894,14 @@ function update(deltaMs) {
 }
 
 function getCurrentDescentSpeed() {
-  const speedMultiplier = 1.2;
-
   if (gameMode === "levels" && levelConfig) {
-    return levelConfig.descentSpeed * 1.12 * speedMultiplier;
+    return levelConfig.descentSpeed;
   }
 
-  return (2.35 + Math.min(9.6, gameTime * 0.039)) * speedMultiplier;
+  const scoreModeBaseSpeed = 2.35;
+  const steps = Math.floor(gameTime / 10);
+  const multiplier = Math.min(Math.pow(1.05, steps), 3.0);
+  return scoreModeBaseSpeed * multiplier;
 }
 
 function updateSmoothDescent(deltaSec) {
@@ -1233,25 +1287,25 @@ function handlePointerDown(x, y) {
     const bx = width / 2 - 120;
     const by = height * 0.46;
 
-    if (isInside(x, y, bx, by, 240, 56)) {
-      pointerStartedOnButton = true;
-      startLevel(maxOpenedLevel);
-      return;
-    }
-
-    if (isInside(x, y, bx, by + 70, 240, 56)) {
+    if (isInside(x, y, bx, by, 240, 66)) {
       pointerStartedOnButton = true;
       startScoreMode();
       return;
     }
 
-    if (isInside(x, y, bx, by + 140, 240, 52)) {
+    if (isInside(x, y, bx, by + 80, 240, 56)) {
+      pointerStartedOnButton = true;
+      startLevel(maxOpenedLevel);
+      return;
+    }
+
+    if (isInside(x, y, bx, by + 150, 240, 52)) {
       pointerStartedOnButton = true;
       gameState = "howto";
       return;
     }
 
-    if (isInside(x, y, bx, by + 204, 240, 52)) {
+    if (isInside(x, y, bx, by + 214, 240, 52)) {
       pointerStartedOnButton = true;
       soundEnabled = !soundEnabled;
       localStorage.setItem(SAVE.sound, soundEnabled ? "on" : "off");
@@ -1495,6 +1549,10 @@ async function initYandexSDK() {
   try {
     if (window.YaGames && typeof window.YaGames.init === "function") {
       ysdk = await window.YaGames.init();
+      const sdkLang = ysdk?.environment?.i18n?.lang?.toLowerCase?.();
+      if (sdkLang) {
+        currentLang = /^(ru|be|uk|kk|uz)/.test(sdkLang) ? "ru" : "en";
+      }
     }
   } catch (e) { ysdk = null; }
 }
