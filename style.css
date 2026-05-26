@@ -13,7 +13,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #061226;
+  background: radial-gradient(circle at 20% 0%, #1d2e55 0%, #070d1d 58%, #04070f 100%);
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -24,7 +24,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at top, #214f91, #061226 70%);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(166, 196, 255, 0.28), rgba(7, 13, 29, 0) 44%),
+    radial-gradient(circle at 15% 18%, rgba(68, 112, 201, 0.35), rgba(8, 16, 33, 0) 45%),
+    linear-gradient(160deg, #0a1227 0%, #070d1d 58%, #03060f 100%);
 }
 
 canvas {
@@ -32,6 +35,9 @@ canvas {
   width: min(100vw, 560px);
   height: 100vh;
   max-height: 920px;
-  background: linear-gradient(180deg, #1e5799 0%, #0b2857 55%, #061226 100%);
+  background: linear-gradient(180deg, #263e73 0%, #111f45 48%, #070d1d 100%);
+  border-left: 1px solid rgba(255,255,255,0.12);
+  border-right: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 25px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.18);
   touch-action: none;
 }

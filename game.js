@@ -178,7 +178,7 @@ function getBubblePosition(row, col) {
   };
 
   const stableRow = row - gridRowShift;
-  const offset = Math.abs(stableRow) % 2 === 0 ? 0 : metrics.bubbleRadius;
+  const offset = isShiftedOddRow(stableRow) ? metrics.bubbleRadius : 0;
 
   return {
     x: metrics.startX + col * metrics.colWidth + offset,
@@ -310,14 +310,14 @@ function playSound(type) {
 
 function drawBackground() {
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, "#2868b3");
-  gradient.addColorStop(0.48, "#0d315f");
-  gradient.addColorStop(1, "#061226");
+  gradient.addColorStop(0, "#2b3f6b");
+  gradient.addColorStop(0.45, "#101d3d");
+  gradient.addColorStop(1, "#050914");
 
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
   for (let i = 0; i < 45; i++) {
     const x = (i * 97 + Math.sin(gameTime + i) * 20) % width;
     const y = (i * 131 + gameTime * 7) % height;
@@ -548,18 +548,31 @@ function drawBigButton(x, y, w, h, text) {
   ctx.save();
 
   const gradient = ctx.createLinearGradient(x, y, x, y + h);
-  gradient.addColorStop(0, "#ffffff");
-  gradient.addColorStop(1, "#9ed7ff");
+  gradient.addColorStop(0, "#fefefe");
+  gradient.addColorStop(0.5, "#dbe7ff");
+  gradient.addColorStop(1, "#b8c9ee");
+
+  ctx.shadowColor = "rgba(5, 10, 30, 0.45)";
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 6;
 
   ctx.fillStyle = gradient;
-  roundRect(x, y, w, h, 16);
+  roundRect(x, y, w, h, 18);
   ctx.fill();
 
-  ctx.strokeStyle = "rgba(255,255,255,0.65)";
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = "rgba(255,255,255,0.82)";
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  ctx.fillStyle = "#12345f";
+  const gloss = ctx.createLinearGradient(x, y, x, y + h * 0.65);
+  gloss.addColorStop(0, "rgba(255,255,255,0.55)");
+  gloss.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gloss;
+  roundRect(x + 2, y + 2, w - 4, h * 0.52, 14);
+  ctx.fill();
+
+  ctx.fillStyle = "#1a2f5e";
   ctx.font = "bold 21px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -587,12 +600,17 @@ function drawMenu() {
   ctx.textAlign = "center";
 
   ctx.fillStyle = "white";
-  ctx.font = "bold 36px Arial";
+  ctx.font = "bold 40px Arial";
+  const titleGradient = ctx.createLinearGradient(width / 2 - 120, 0, width / 2 + 120, 0);
+  titleGradient.addColorStop(0, "#ffffff");
+  titleGradient.addColorStop(0.5, "#dce8ff");
+  titleGradient.addColorStop(1, "#ffffff");
+  ctx.fillStyle = titleGradient;
   ctx.fillText("Шариковый", width / 2, height * 0.21);
-  ctx.fillText("Выстрел", width / 2, height * 0.21 + 43);
+  ctx.fillText("Выстрел", width / 2, height * 0.21 + 45);
 
   ctx.font = "17px Arial";
-  ctx.fillStyle = "rgba(255,255,255,0.88)";
+  ctx.fillStyle = "rgba(240,245,255,0.92)";
   ctx.fillText("Целься, стреляй и собирай", width / 2, height * 0.21 + 88);
   ctx.fillText("3+ шарика одного цвета", width / 2, height * 0.21 + 112);
 
@@ -932,6 +950,10 @@ function isCellOccupied(row, col) {
   return bubbles.some(b => !b.falling && b.row === row && b.col === col);
 }
 
+function isShiftedOddRow(row) {
+  return Math.abs(row) % 2 === 1;
+}
+
 function getNeighbors(target) {
   const even = [
     [0, -1], [0, 1],
@@ -945,7 +967,8 @@ function getNeighbors(target) {
     [1, 0], [1, 1]
   ];
 
-  const directions = target.row % 2 === 0 ? even : odd;
+  const stableRow = target.row - gridRowShift;
+  const directions = isShiftedOddRow(stableRow) ? odd : even;
   const result = [];
 
   for (const [dr, dc] of directions) {
