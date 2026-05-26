@@ -1,0 +1,37 @@
+* {
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #061226;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+#game-wrapper {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top, #214f91, #061226 70%);
+}
+
+canvas {
+  display: block;
+  width: min(100vw, 560px);
+  height: 100vh;
+  max-height: 920px;
+  background: linear-gradient(180deg, #1e5799 0%, #0b2857 55%, #061226 100%);
+  touch-action: none;
+}
