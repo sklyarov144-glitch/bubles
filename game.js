@@ -140,10 +140,11 @@ let sdkReadyNotified = false;
 let audioCtx = null;
 let audioNodes = new Set();
 let isAdShowing = false;
-let finishedRoundsSinceAd = 0;
-let sessionStartedAtMs = Date.now();
-const AD_SHOW_EVERY_FINISHES = 3;
-const AD_STARTUP_GRACE_MS = 12000;
+let resultScreenStartedAt = 0;
+let resultOverlayAlpha = 1;
+let resultAdShown = false;
+const RESULT_OVERLAY_DELAY_MS = 520;
+const RESULT_OVERLAY_FADE_MS = 380;
 
 function resizeCanvas() {
   pixelRatio = window.devicePixelRatio || 1;
@@ -186,14 +187,32 @@ window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
 function generateLevelConfig(level) {
-  // Параметры уровня рассчитаны под среднюю длительность прохождения 1–2 минуты.
   const clampedLevel = Math.max(1, Math.min(100, level));
+
+  let initialRows;
+  let colorCount;
+
+  if (clampedLevel <= 10) {
+    initialRows = 5 + Math.floor((clampedLevel - 1) / 3);
+    colorCount = 4;
+  } else if (clampedLevel <= 30) {
+    initialRows = 6 + Math.floor((clampedLevel - 11) / 7);
+    colorCount = Math.min(5, 4 + Math.floor((clampedLevel - 11) / 10));
+  } else if (clampedLevel <= 60) {
+    initialRows = 8 + Math.floor((clampedLevel - 31) / 10);
+    colorCount = Math.min(6, 5 + Math.floor((clampedLevel - 31) / 20));
+  } else {
+    initialRows = 10 + Math.floor((clampedLevel - 61) / 10);
+    colorCount = Math.min(7, 6 + Math.floor((clampedLevel - 61) / 20));
+  }
+
+  initialRows = Math.min(12, initialRows);
+  colorCount = Math.min(7, colorCount);
+
   const progress = (clampedLevel - 1) / 99;
-  const colorCount = Math.min(7, 4 + Math.floor(progress * 3.2));
-  const initialRows = Math.min(10, 4 + Math.floor(progress * 6));
-  const descentSpeed = 1.05 + progress * 1.55;
-  const targetPops = Math.round(14 + clampedLevel * 1.2 + progress * 22);
-  const targetScore = Math.round(220 + clampedLevel * 44 + progress * 1500);
+  const descentSpeed = 1.6 + progress * 2.1;
+  const targetPops = Math.round(22 + clampedLevel * 1.8 + progress * 34);
+  const targetScore = Math.round(360 + clampedLevel * 58 + progress * 2100);
   const goalType = clampedLevel % 2 === 0 ? "score" : "pops";
 
   return {
@@ -294,8 +313,47 @@ function createShooterBubbles() {
   };
 }
 
+function setResultState(nextState) {
+  if (gameState === nextState) return;
+
+  gameState = nextState;
+  resultScreenStartedAt = performance.now();
+  resultOverlayAlpha = 0;
+  resultAdShown = false;
+
+  stopAllAudio();
+}
+
+function updateResultOverlayAlpha(now) {
+  if (gameState !== "levelcomplete" && gameState !== "gameover") {
+    resultOverlayAlpha = 1;
+    return;
+  }
+
+  const elapsed = Math.max(0, now - resultScreenStartedAt);
+
+  if (elapsed <= RESULT_OVERLAY_DELAY_MS) {
+    resultOverlayAlpha = 0;
+  } else {
+    const fadeElapsed = elapsed - RESULT_OVERLAY_DELAY_MS;
+    resultOverlayAlpha = Math.min(1, fadeElapsed / RESULT_OVERLAY_FADE_MS);
+  }
+}
+
+function maybeShowResultAd() {
+  if (resultAdShown || isAdShowing) return;
+
+  const shouldShowForState = gameState === "levelcomplete"
+    || (gameState === "gameover" && gameMode === "score")
+    || (gameState === "gameover" && gameMode === "levels");
+
+  if (!shouldShowForState) return;
+
+  resultAdShown = true;
+  showInterstitialAd();
+}
+
 function startLevel(level) {
-  sessionStartedAtMs = Date.now();
   currentLevel = Math.max(1, Math.min(100, level));
   levelConfig = generateLevelConfig(currentLevel);
 
@@ -314,7 +372,6 @@ function startLevel(level) {
 }
 
 function startScoreMode() {
-  sessionStartedAtMs = Date.now();
   gameMode = "score";
   gameState = "playing";
   score = 0;
@@ -787,8 +844,9 @@ function drawPaused() {
   ctx.restore();
 }
 
-function drawLevelComplete() {
+function drawLevelComplete(alpha = 1) {
   ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
   ctx.fillStyle = "rgba(0,0,0,0.62)";
   ctx.fillRect(0, 0, width, height);
@@ -816,8 +874,9 @@ function drawLevelComplete() {
   ctx.restore();
 }
 
-function drawGameOver() {
+function drawGameOver(alpha = 1) {
   ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
   ctx.fillStyle = "rgba(0,0,0,0.66)";
   ctx.fillRect(0, 0, width, height);
@@ -1221,8 +1280,7 @@ function checkGoals() {
   }
 
   if (completed) {
-    gameState = "levelcomplete";
-    maybeShowInterstitialAd();
+    setResultState("levelcomplete");
 
     if (currentLevel >= maxOpenedLevel && currentLevel < 100) {
       maxOpenedLevel = currentLevel + 1;
@@ -1244,8 +1302,7 @@ function checkGameOver() {
     const pos = getBubblePosition(bubble.row, bubble.col);
 
     if (pos.y + bubbleRadius >= limit) {
-      gameState = "gameover";
-      maybeShowInterstitialAd();
+      setResultState("gameover");
       playSound("lose");
       return;
     }
@@ -1322,6 +1379,7 @@ function handlePointerDown(x, y) {
   }
 
   if (gameState === "levelcomplete") {
+    if (resultOverlayAlpha < 0.99) return;
     const bx = width / 2 - 120;
     const by = height * 0.56;
 
@@ -1373,6 +1431,7 @@ function handlePointerDown(x, y) {
   }
 
   if (gameState === "gameover") {
+    if (resultOverlayAlpha < 0.99) return;
     const bx = width / 2 - 120;
     const by = height * 0.57;
 
@@ -1519,11 +1578,11 @@ function render() {
   }
 
   if (gameState === "levelcomplete") {
-    drawLevelComplete();
+    drawLevelComplete(resultOverlayAlpha);
   }
 
   if (gameState === "gameover") {
-    drawGameOver();
+    drawGameOver(resultOverlayAlpha);
   }
 }
 
@@ -1532,6 +1591,8 @@ function gameLoop(timestamp) {
   lastTime = timestamp;
 
   update(deltaMs);
+  updateResultOverlayAlpha(timestamp);
+  maybeShowResultAd();
   render();
 
   requestAnimationFrame(gameLoop);
@@ -1564,36 +1625,30 @@ function notifyYandexReady() {
 }
 
 
-function shouldShowInterstitialAd() {
-  const enoughFinishes = finishedRoundsSinceAd >= AD_SHOW_EVERY_FINISHES;
-  const startupGracePassed = Date.now() - sessionStartedAtMs >= AD_STARTUP_GRACE_MS;
-
-  return enoughFinishes && startupGracePassed;
-}
-
-function maybeShowInterstitialAd(callback) {
-  finishedRoundsSinceAd += 1;
-
-  if (!shouldShowInterstitialAd()) {
+function showInterstitialAd(callback) {
+  const done = () => {
+    isAdShowing = false;
     callback?.();
+  };
+
+  stopAllAudio();
+
+  if (!ysdk?.adv?.showFullscreenAdv) {
+    done();
     return;
   }
 
-  finishedRoundsSinceAd = 0;
-  showInterstitialAd(callback);
-}
-
-function showInterstitialAd(callback) {
-  const done = () => { isAdShowing = false; callback?.(); };
-  pauseGame();
-  stopAllAudio();
-  if (!ysdk?.adv?.showFullscreenAdv) { done(); return; }
   isAdShowing = true;
-  ysdk.adv.showFullscreenAdv({
-    callbacks: {
-      onClose: () => done(),
-      onError: () => done(),
-      onOffline: () => done()
-    }
-  });
+
+  try {
+    ysdk.adv.showFullscreenAdv({
+      callbacks: {
+        onClose: () => done(),
+        onError: () => done(),
+        onOffline: () => done()
+      }
+    });
+  } catch (e) {
+    done();
+  }
 }
