@@ -57,6 +57,10 @@ let sdkReadyNotified = false;
 let audioCtx = null;
 let audioNodes = new Set();
 let isAdShowing = false;
+let finishedRoundsSinceAd = 0;
+let sessionStartedAtMs = Date.now();
+const AD_SHOW_EVERY_FINISHES = 3;
+const AD_STARTUP_GRACE_MS = 12000;
 
 function resizeCanvas() {
   pixelRatio = window.devicePixelRatio || 1;
@@ -182,7 +186,7 @@ function getBubblePosition(row, col) {
     startX: (width - getColumnCount() * colWidth) / 2 + bubbleRadius
   };
 
-    const offset = isShiftedOddRow(row) ? metrics.bubbleRadius : 0;
+  const offset = isShiftedOddRow(row) ? metrics.bubbleRadius : 0;
 
   return {
     x: metrics.startX + col * metrics.colWidth + offset,
@@ -193,6 +197,7 @@ function getBubblePosition(row, col) {
 function createInitialBubbles(rows) {
   bubbles = [];
   fieldOffsetY = 0;
+  gridRowShift = 0;
 
   const cols = getColumnCount();
 
@@ -237,6 +242,7 @@ function createShooterBubbles() {
 }
 
 function startLevel(level) {
+  sessionStartedAtMs = Date.now();
   currentLevel = Math.max(1, Math.min(100, level));
   levelConfig = generateLevelConfig(currentLevel);
 
@@ -255,6 +261,7 @@ function startLevel(level) {
 }
 
 function startScoreMode() {
+  sessionStartedAtMs = Date.now();
   gameMode = "score";
   gameState = "playing";
   score = 0;
@@ -857,6 +864,8 @@ function updateSmoothDescent(deltaSec) {
       }
     }
 
+    gridRowShift += 1;
+
     if (gameMode === "score") {
       addNewTopRow(0.82);
     } else {
@@ -981,7 +990,7 @@ function isCellOccupied(row, col) {
 }
 
 function isShiftedOddRow(row) {
-  return Math.abs(row) % 2 === 1;
+  return Math.abs(row - gridRowShift) % 2 === 1;
 }
 
 function getNeighbors(target) {
@@ -1159,7 +1168,7 @@ function checkGoals() {
 
   if (completed) {
     gameState = "levelcomplete";
-    showInterstitialAd();
+    maybeShowInterstitialAd();
 
     if (currentLevel >= maxOpenedLevel && currentLevel < 100) {
       maxOpenedLevel = currentLevel + 1;
@@ -1182,7 +1191,7 @@ function checkGameOver() {
 
     if (pos.y + bubbleRadius >= limit) {
       gameState = "gameover";
-      showInterstitialAd();
+      maybeShowInterstitialAd();
       playSound("lose");
       return;
     }
@@ -1486,12 +1495,6 @@ async function initYandexSDK() {
   try {
     if (window.YaGames && typeof window.YaGames.init === "function") {
       ysdk = await window.YaGames.init();
-      if (ysdk?.features?.GameplayAPI) {
-        document.addEventListener("visibilitychange", () => {
-          if (document.hidden) ysdk.features.GameplayAPI.stop?.();
-          else ysdk.features.GameplayAPI.start?.();
-        });
-      }
     }
   } catch (e) { ysdk = null; }
 }
@@ -1500,6 +1503,26 @@ function notifyYandexReady() {
   if (sdkReadyNotified) return;
   sdkReadyNotified = true;
   try { ysdk?.features?.LoadingAPI?.ready?.(); } catch (e) {}
+}
+
+
+function shouldShowInterstitialAd() {
+  const enoughFinishes = finishedRoundsSinceAd >= AD_SHOW_EVERY_FINISHES;
+  const startupGracePassed = Date.now() - sessionStartedAtMs >= AD_STARTUP_GRACE_MS;
+
+  return enoughFinishes && startupGracePassed;
+}
+
+function maybeShowInterstitialAd(callback) {
+  finishedRoundsSinceAd += 1;
+
+  if (!shouldShowInterstitialAd()) {
+    callback?.();
+    return;
+  }
+
+  finishedRoundsSinceAd = 0;
+  showInterstitialAd(callback);
 }
 
 function showInterstitialAd(callback) {
