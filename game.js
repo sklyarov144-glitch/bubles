@@ -889,7 +889,11 @@ function drawPaused() {
   ctx.fillRect(0, 0, width, height);
 
   const panelW = Math.min(340, width - 44);
-  const panelH = 286;
+  const buttonHeight = 54;
+  const buttonGap = 14;
+  const panelTopPadding = 116;
+  const panelBottomPadding = 20;
+  const panelH = panelTopPadding + buttonHeight * 3 + buttonGap * 2 + panelBottomPadding;
   const panelX = width / 2 - panelW / 2;
   const panelY = height / 2 - panelH / 2;
 
@@ -913,9 +917,9 @@ function drawPaused() {
   const bx = width / 2 - 120;
   const by = panelY + 116;
 
-  drawBigButton(bx, by, 240, 54, t("resume"));
-  drawBigButton(bx, by + 68, 240, 54, t("restart"));
-  drawBigButton(bx, by + 136, 240, 54, t("backToMenu"));
+  drawBigButton(bx, by, 240, buttonHeight, t("resume"));
+  drawBigButton(bx, by + buttonHeight + buttonGap, 240, buttonHeight, t("restart"));
+  drawBigButton(bx, by + (buttonHeight + buttonGap) * 2, 240, buttonHeight, t("backToMenu"));
 
   ctx.restore();
 }
