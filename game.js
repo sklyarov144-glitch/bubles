@@ -51,6 +51,7 @@ let poppedThisLevel = 0;
 let shotsCount = 0;
 let pointerStartedOnButton = false;
 let gridMetrics = null;
+let gridRowShift = 0;
 
 function resizeCanvas() {
   pixelRatio = window.devicePixelRatio || 1;
@@ -159,6 +160,10 @@ function randomColor() {
 }
 
 function getColumnCount() {
+  if (gridMetrics && gameState !== "menu" && gameState !== "howto") {
+    return gridMetrics.cols;
+  }
+
   return Math.floor((width - bubbleRadius * 2) / colWidth);
 }
 
@@ -168,14 +173,15 @@ function getBubblePosition(row, col) {
     colWidth,
     rowHeight,
     cols: getColumnCount(),
-    topY: bubbleRadius * 2.4
+    topY: bubbleRadius * 2.4,
+    startX: (width - getColumnCount() * colWidth) / 2 + bubbleRadius
   };
-  const totalWidth = metrics.cols * metrics.colWidth;
-  const startX = (width - totalWidth) / 2 + metrics.bubbleRadius;
-  const offset = row % 2 === 0 ? 0 : metrics.bubbleRadius;
+
+  const stableRow = row - gridRowShift;
+  const offset = Math.abs(stableRow) % 2 === 0 ? 0 : metrics.bubbleRadius;
 
   return {
-    x: startX + col * metrics.colWidth + offset,
+    x: metrics.startX + col * metrics.colWidth + offset,
     y: metrics.topY + row * metrics.rowHeight + fieldOffsetY
   };
 }
@@ -183,16 +189,18 @@ function getBubblePosition(row, col) {
 function createInitialBubbles(rows) {
   bubbles = [];
   fieldOffsetY = 0;
+  gridRowShift = 0;
+
+  const cols = getColumnCount();
 
   gridMetrics = {
     bubbleRadius,
     colWidth,
     rowHeight,
-    cols: getColumnCount(),
-    topY: bubbleRadius * 2.4
+    cols,
+    topY: bubbleRadius * 2.4,
+    startX: (width - cols * colWidth) / 2 + bubbleRadius
   };
-
-  const cols = getColumnCount();
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
@@ -788,10 +796,13 @@ function getCurrentDescentSpeed() {
 }
 
 function updateSmoothDescent(deltaSec) {
+  const metrics = gridMetrics || { rowHeight };
+
   fieldOffsetY += getCurrentDescentSpeed() * deltaSec;
 
-  while (fieldOffsetY >= rowHeight) {
-    fieldOffsetY -= rowHeight;
+  while (fieldOffsetY >= metrics.rowHeight) {
+    fieldOffsetY -= metrics.rowHeight;
+    gridRowShift++;
 
     for (const bubble of bubbles) {
       if (!bubble.falling) {
