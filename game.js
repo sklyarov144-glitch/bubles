@@ -467,14 +467,19 @@ function stopAllAudio() {
   audioNodes.clear();
 }
 
-function playSound(type) {
+async function playSound(type) {
+  console.log("soundEnabled", soundEnabled);
+  console.log("audioCtx state", audioCtx?.state);
+  console.log("playSound", type);
+
   if (!soundEnabled || document.hidden || isAdShowing) return;
 
   try {
     const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextCtor) return;
     if (!audioCtx) audioCtx = new AudioContextCtor();
-    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+    if (audioCtx.state !== "running") return;
     const oscillator = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
@@ -508,7 +513,9 @@ function playSound(type) {
     oscillator.onended = () => audioNodes.delete(oscillator);
     oscillator.start();
     oscillator.stop(audioCtx.currentTime + duration);
-  } catch (error) {}
+  } catch (error) {
+    console.warn("Audio error", error);
+  }
 }
 
 function drawBackground() {
@@ -1494,8 +1501,9 @@ function toggleSound() {
   localStorage.setItem(SAVE.sound, soundEnabled ? "on" : "off");
 
   if (soundEnabled) {
-    unlockAudio();
-    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    unlockAudio().then(() => {
+      playSound("shoot");
+    });
   } else {
     stopAllAudio();
   }
@@ -1717,13 +1725,31 @@ function getCanvasPointerPosition(event) {
   };
 }
 
-function unlockAudio() {
-  if (audioUnlocked) return;
+async function unlockAudio() {
+  if (audioUnlocked && audioCtx?.state === "running") return true;
+
   const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextCtor) return;
+  if (!AudioContextCtor) return false;
+
   if (!audioCtx) audioCtx = new AudioContextCtor();
-  if (audioCtx.state === "suspended") audioCtx.resume();
-  audioUnlocked = true;
+
+  try {
+    if (audioCtx.state === "running") {
+      audioUnlocked = true;
+      return true;
+    }
+
+    if (audioCtx.state === "suspended") {
+      await audioCtx.resume();
+    }
+
+    audioUnlocked = audioCtx.state === "running";
+    return audioUnlocked;
+  } catch (error) {
+    audioUnlocked = false;
+    console.warn("Audio error", error);
+    return false;
+  }
 }
 
 canvas.addEventListener("pointerdown", event => {
@@ -1847,8 +1873,17 @@ function notifyYandexReady() {
 
 
 function showInterstitialAd(callback) {
-  const done = () => {
+  const done = async () => {
     isAdShowing = false;
+
+    if (soundEnabled && audioCtx && audioCtx.state === "suspended") {
+      try {
+        await audioCtx.resume();
+      } catch (error) {
+        console.warn("Audio error", error);
+      }
+    }
+
     callback?.();
   };
 
