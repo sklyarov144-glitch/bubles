@@ -571,6 +571,8 @@ function drawBigButton(x, y, w, h, text) {
   ctx.fill();
 
   ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.shadowColor = "transparent";
   ctx.strokeStyle = "rgba(255,255,255,0.82)";
   ctx.lineWidth = 2;
   ctx.stroke();
@@ -587,7 +589,7 @@ function drawBigButton(x, y, w, h, text) {
   ctx.font = `bold ${fontSize}px Arial`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, x + w / 2, y + h / 2 + 0.5);
+  ctx.fillText(text, Math.round(x + w / 2), Math.round(y + h / 2));
 
   ctx.restore();
 }
@@ -832,11 +834,13 @@ function update(deltaMs) {
 }
 
 function getCurrentDescentSpeed() {
+  const speedMultiplier = 1.2;
+
   if (gameMode === "levels" && levelConfig) {
-    return levelConfig.descentSpeed * 1.12;
+    return levelConfig.descentSpeed * 1.12 * speedMultiplier;
   }
 
-  return 2.35 + Math.min(9.6, gameTime * 0.039);
+  return (2.35 + Math.min(9.6, gameTime * 0.039)) * speedMultiplier;
 }
 
 function updateSmoothDescent(deltaSec) {
