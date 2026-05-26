@@ -50,6 +50,7 @@ let gameTime = 0;
 let poppedThisLevel = 0;
 let shotsCount = 0;
 let pointerStartedOnButton = false;
+let gridMetrics = null;
 
 function resizeCanvas() {
   pixelRatio = window.devicePixelRatio || 1;
@@ -67,9 +68,15 @@ function resizeCanvas() {
   width = displayWidth;
   height = displayHeight;
 
-  bubbleRadius = Math.max(15, Math.min(22, width / 24));
-  colWidth = bubbleRadius * 2;
-  rowHeight = bubbleRadius * 1.72;
+  const nextBubbleRadius = Math.max(15, Math.min(22, width / 24));
+  const nextColWidth = nextBubbleRadius * 2;
+  const nextRowHeight = nextBubbleRadius * 1.72;
+
+  if (!gridMetrics || gameState === "menu" || gameState === "howto") {
+    bubbleRadius = nextBubbleRadius;
+    colWidth = nextColWidth;
+    rowHeight = nextRowHeight;
+  }
 
   if (shooterBubble) {
     shooterBubble.x = width / 2;
@@ -156,20 +163,34 @@ function getColumnCount() {
 }
 
 function getBubblePosition(row, col) {
-  const cols = getColumnCount();
-  const totalWidth = cols * colWidth;
-  const startX = (width - totalWidth) / 2 + bubbleRadius;
-  const offset = row % 2 === 0 ? 0 : bubbleRadius;
+  const metrics = gridMetrics || {
+    bubbleRadius,
+    colWidth,
+    rowHeight,
+    cols: getColumnCount(),
+    topY: bubbleRadius * 2.4
+  };
+  const totalWidth = metrics.cols * metrics.colWidth;
+  const startX = (width - totalWidth) / 2 + metrics.bubbleRadius;
+  const offset = row % 2 === 0 ? 0 : metrics.bubbleRadius;
 
   return {
-    x: startX + col * colWidth + offset,
-    y: bubbleRadius * 2.4 + row * rowHeight + fieldOffsetY
+    x: startX + col * metrics.colWidth + offset,
+    y: metrics.topY + row * metrics.rowHeight + fieldOffsetY
   };
 }
 
 function createInitialBubbles(rows) {
   bubbles = [];
   fieldOffsetY = 0;
+
+  gridMetrics = {
+    bubbleRadius,
+    colWidth,
+    rowHeight,
+    cols: getColumnCount(),
+    topY: bubbleRadius * 2.4
+  };
 
   const cols = getColumnCount();
 
@@ -216,6 +237,7 @@ function startLevel(level) {
   shotsCount = 0;
   particles = [];
   flyingBubble = null;
+  gridMetrics = null;
 
   createInitialBubbles(levelConfig.initialRows);
   createShooterBubbles();
@@ -231,6 +253,7 @@ function startScoreMode() {
   particles = [];
   flyingBubble = null;
   levelConfig = null;
+  gridMetrics = null;
 
   createInitialBubbles(6);
   createShooterBubbles();
@@ -404,7 +427,7 @@ function drawAimLine() {
 }
 
 function drawShooter() {
-  if (gameState !== "playing") return;
+  if (gameState !== "playing" && gameState !== "paused") return;
 
   const baseX = width / 2;
   const baseY = height - bubbleRadius * 1.5;
@@ -615,16 +638,37 @@ function drawHowToPlay() {
 function drawPaused() {
   ctx.save();
 
-  ctx.fillStyle = "rgba(0,0,0,0.58)";
+  ctx.fillStyle = "rgba(0,0,0,0.62)";
   ctx.fillRect(0, 0, width, height);
+
+  const panelW = Math.min(340, width - 44);
+  const panelH = 286;
+  const panelX = width / 2 - panelW / 2;
+  const panelY = height / 2 - panelH / 2;
+
+  ctx.fillStyle = "rgba(8, 22, 45, 0.92)";
+  roundRect(panelX, panelY, panelW, panelH, 18);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
   ctx.textAlign = "center";
   ctx.fillStyle = "white";
-  ctx.font = "bold 36px Arial";
-  ctx.fillText("Пауза", width / 2, height / 2 - 35);
+  ctx.font = "bold 34px Arial";
+  ctx.fillText("Пауза", width / 2, panelY + 58);
 
-  ctx.font = "18px Arial";
-  ctx.fillText("Нажми ▶, чтобы продолжить", width / 2, height / 2 + 12);
+  ctx.font = "17px Arial";
+  ctx.fillStyle = "rgba(255,255,255,0.84)";
+  ctx.fillText("Игра остановлена", width / 2, panelY + 89);
+
+  const bx = width / 2 - 120;
+  const by = panelY + 116;
+
+  drawBigButton(bx, by, 240, 54, "Продолжить");
+  drawBigButton(bx, by + 68, 240, 54, "Заново");
+  drawBigButton(bx, by + 136, 240, 54, "В меню");
 
   ctx.restore();
 }
@@ -722,10 +766,7 @@ function shoot() {
 }
 
 function update(deltaMs) {
-  if (gameState !== "playing") {
-    updateParticles(deltaMs);
-    return;
-  }
+  if (gameState !== "playing") return;
 
   const deltaSec = deltaMs / 1000;
   gameTime += deltaSec;
@@ -1091,6 +1132,14 @@ function togglePause() {
   }
 }
 
+function restartCurrentMode() {
+  if (gameMode === "levels") {
+    startLevel(currentLevel);
+  } else if (gameMode === "score") {
+    startScoreMode();
+  }
+}
+
 function handlePointerDown(x, y) {
   pointerStartedOnButton = false;
 
@@ -1167,6 +1216,33 @@ function handlePointerDown(x, y) {
     if (isInside(x, y, bx, by + 72, 240, 52)) {
       pointerStartedOnButton = true;
       gameState = "menu";
+      return;
+    }
+  }
+
+  if (gameState === "paused") {
+    const panelW = Math.min(340, width - 44);
+    const panelH = 286;
+    const panelY = height / 2 - panelH / 2;
+    const bx = width / 2 - 120;
+    const by = panelY + 116;
+
+    if (isInside(x, y, bx, by, 240, 54)) {
+      pointerStartedOnButton = true;
+      gameState = "playing";
+      return;
+    }
+
+    if (isInside(x, y, bx, by + 68, 240, 54)) {
+      pointerStartedOnButton = true;
+      restartCurrentMode();
+      return;
+    }
+
+    if (isInside(x, y, bx, by + 136, 240, 54)) {
+      pointerStartedOnButton = true;
+      gameState = "menu";
+      flyingBubble = null;
       return;
     }
   }
@@ -1281,6 +1357,15 @@ window.addEventListener("contextmenu", event => {
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && gameState === "playing") {
     gameState = "paused";
+  }
+});
+
+document.addEventListener("keydown", event => {
+  if (event.code === "Escape" || event.code === "KeyP") {
+    if (gameState === "playing" || gameState === "paused") {
+      event.preventDefault();
+      togglePause();
+    }
   }
 });
 
