@@ -935,15 +935,41 @@ function drawPaused() {
 }
 
 
+
+function getSettingsLayout() {
+  const panelW = Math.min(360, width - 30);
+  const panelH = Math.min(390, height - 80);
+  const panelX = (width - panelW) / 2;
+  const panelY = (height - panelH) / 2;
+  const bw = panelW - 56;
+  const bh = Math.round(50 * uiScale);
+  const bx = panelX + 28;
+  const buttonGap = 14;
+
+  return {
+    panelW,
+    panelH,
+    panelX,
+    panelY,
+    bw,
+    bh,
+    bx,
+    langButtons: {
+      ru: { x: bx, y: panelY + 112, w: bw, h: bh },
+      en: { x: bx, y: panelY + 112 + (bh + buttonGap), w: bw, h: bh },
+      tr: { x: bx, y: panelY + 112 + (bh + buttonGap) * 2, w: bw, h: bh }
+    },
+    closeButton: { x: width / 2 - 110, y: panelY + panelH - 72, w: 220, h: 52 }
+  };
+}
+
+
 function drawSettings() {
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.7)";
   ctx.fillRect(0, 0, width, height);
 
-  const panelW = Math.min(360, width - 30);
-  const panelH = Math.min(390, height - 80);
-  const panelX = (width - panelW) / 2;
-  const panelY = (height - panelH) / 2;
+  const { panelW, panelH, panelX, panelY, bw, bh, bx, langButtons, closeButton } = getSettingsLayout();
 
   ctx.fillStyle = "rgba(8, 22, 45, 0.95)";
   roundRect(panelX, panelY, panelW, panelH, 18);
@@ -959,18 +985,15 @@ function drawSettings() {
   ctx.font = `${Math.floor(18 * uiScale)}px Arial`;
   ctx.fillText(t("language"), width / 2, panelY + 88);
 
-  const bw = panelW - 56;
-  const bh = Math.round(50 * uiScale);
-  const bx = panelX + 28;
   const labels = [["ru", t("russian")], ["en", t("english")], ["tr", t("turkish")]];
 
-  labels.forEach((item, idx) => {
-    const by = panelY + 112 + idx * (bh + 14);
+  labels.forEach((item) => {
+    const btn = langButtons[item[0]];
     const selected = currentLang === item[0];
-    drawBigButton(bx, by, bw, bh, `${selected ? "✓ " : ""}${item[1]}`);
+    drawBigButton(btn.x, btn.y, btn.w, btn.h, `${selected ? "✓ " : ""}${item[1]}`);
   });
 
-  drawBigButton(width / 2 - 110, panelY + panelH - 72, 220, 52, t("close"));
+  drawBigButton(closeButton.x, closeButton.y, closeButton.w, closeButton.h, t("close"));
   ctx.restore();
 }
 
@@ -1442,9 +1465,40 @@ function checkGameOver() {
 function pauseGame() { if (gameState === "playing") { gameState = "paused"; stopAllAudio(); }}
 function resumeGame() { if (gameState === "paused" && !isAdShowing) gameState = "playing"; }
 function togglePause() { if (gameState === "playing") pauseGame(); else if (gameState === "paused") resumeGame(); }
-function openSettings(){ if(gameState==="settings") return; preSettingsState=gameState; if(gameState==="playing") pauseGame(); gameState="settings"; }
-function closeSettings(){ gameState = preSettingsState === "playing" ? "paused" : (preSettingsState || "menu"); preSettingsState=null; }
-function setLanguage(lang){ if(!I18N[lang]) return; currentLang=lang; localStorage.setItem(SAVE.language, lang); document.documentElement.lang=currentLang; }
+function openSettings() {
+  if (gameState === "settings") return;
+  preSettingsState = gameState;
+
+  if (gameState === "playing") {
+    stopAllAudio();
+    gameState = "settings";
+    return;
+  }
+
+  gameState = "settings";
+}
+function closeSettings() {
+  if (preSettingsState === "playing") gameState = "paused";
+  else gameState = preSettingsState || "menu";
+  preSettingsState = null;
+}
+function setLanguage(lang) {
+  if (!I18N[lang]) return;
+  currentLang = lang;
+  localStorage.setItem(SAVE.language, lang);
+  document.documentElement.lang = currentLang;
+}
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem(SAVE.sound, soundEnabled ? "on" : "off");
+
+  if (soundEnabled) {
+    unlockAudio();
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  } else {
+    stopAllAudio();
+  }
+}
 
 function restartCurrentMode() {
   if (gameMode === "levels") {
@@ -1482,8 +1536,7 @@ function handlePointerDown(x, y) {
 
   if (isInside(x, y, soundX, 10, smallButtonW, smallButtonH) && gameState !== "howto" && gameState !== "settings") {
     pointerStartedOnButton = true;
-    soundEnabled = !soundEnabled;
-    localStorage.setItem(SAVE.sound, soundEnabled ? "on" : "off");
+    toggleSound();
     return;
   }
 
@@ -1511,8 +1564,7 @@ function handlePointerDown(x, y) {
 
     if (isInside(x, y, bx, by + 214, 240, 52)) {
       pointerStartedOnButton = true;
-      soundEnabled = !soundEnabled;
-      localStorage.setItem(SAVE.sound, soundEnabled ? "on" : "off");
+      toggleSound();
       return;
     }
   }
@@ -1526,18 +1578,12 @@ function handlePointerDown(x, y) {
   }
 
   if (gameState === "settings") {
-    const panelW = Math.min(360, width - 30);
-    const panelH = Math.min(390, height - 80);
-    const panelX = (width - panelW) / 2;
-    const panelY = (height - panelH) / 2;
-    const bw = panelW - 56;
-    const bh = Math.round(50 * uiScale);
-    const bx = panelX + 28;
+    const { langButtons, closeButton } = getSettingsLayout();
 
-    if (isInside(x, y, bx, panelY + 112, bw, bh)) { pointerStartedOnButton = true; setLanguage("ru"); return; }
-    if (isInside(x, y, bx, panelY + 126 + bh, bw, bh)) { pointerStartedOnButton = true; setLanguage("en"); return; }
-    if (isInside(x, y, bx, panelY + 140 + bh * 2, bw, bh)) { pointerStartedOnButton = true; setLanguage("tr"); return; }
-    if (isInside(x, y, width / 2 - 110, panelY + panelH - 72, 220, 52)) { pointerStartedOnButton = true; closeSettings(); return; }
+    if (isInside(x, y, langButtons.ru.x, langButtons.ru.y, langButtons.ru.w, langButtons.ru.h)) { pointerStartedOnButton = true; setLanguage("ru"); return; }
+    if (isInside(x, y, langButtons.en.x, langButtons.en.y, langButtons.en.w, langButtons.en.h)) { pointerStartedOnButton = true; setLanguage("en"); return; }
+    if (isInside(x, y, langButtons.tr.x, langButtons.tr.y, langButtons.tr.w, langButtons.tr.h)) { pointerStartedOnButton = true; setLanguage("tr"); return; }
+    if (isInside(x, y, closeButton.x, closeButton.y, closeButton.w, closeButton.h)) { pointerStartedOnButton = true; closeSettings(); return; }
     return;
   }
 
@@ -1700,6 +1746,12 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) pause
 window.addEventListener("blur", pauseGame);
 
 document.addEventListener("keydown", event => {
+  if (event.code === "Escape" && gameState === "settings") {
+    event.preventDefault();
+    closeSettings();
+    return;
+  }
+
   if (event.code === "Escape" || event.code === "KeyP") {
     if (gameState === "playing" || gameState === "paused") {
       event.preventDefault();
@@ -1737,22 +1789,6 @@ function render() {
 
   if (gameState === "settings") {
     drawSettings();
-  }
-
-  if (gameState === "settings") {
-    const panelW = Math.min(360, width - 30);
-    const panelH = Math.min(390, height - 80);
-    const panelX = (width - panelW) / 2;
-    const panelY = (height - panelH) / 2;
-    const bw = panelW - 56;
-    const bh = Math.round(50 * uiScale);
-    const bx = panelX + 28;
-
-    if (isInside(x, y, bx, panelY + 112, bw, bh)) { pointerStartedOnButton = true; setLanguage("ru"); return; }
-    if (isInside(x, y, bx, panelY + 126 + bh, bw, bh)) { pointerStartedOnButton = true; setLanguage("en"); return; }
-    if (isInside(x, y, bx, panelY + 140 + bh * 2, bw, bh)) { pointerStartedOnButton = true; setLanguage("tr"); return; }
-    if (isInside(x, y, width / 2 - 110, panelY + panelH - 72, 220, 52)) { pointerStartedOnButton = true; closeSettings(); return; }
-    return;
   }
 
   if (gameState === "levelcomplete") {
