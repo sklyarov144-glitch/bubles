@@ -52,6 +52,11 @@ let shotsCount = 0;
 let pointerStartedOnButton = false;
 let gridMetrics = null;
 let gridRowShift = 0;
+let ysdk = null;
+let sdkReadyNotified = false;
+let audioCtx = null;
+let audioNodes = new Set();
+let isAdShowing = false;
 
 function resizeCanvas() {
   pixelRatio = window.devicePixelRatio || 1;
@@ -177,8 +182,7 @@ function getBubblePosition(row, col) {
     startX: (width - getColumnCount() * colWidth) / 2 + bubbleRadius
   };
 
-  const stableRow = row - gridRowShift;
-  const offset = isShiftedOddRow(stableRow) ? metrics.bubbleRadius : 0;
+    const offset = isShiftedOddRow(row) ? metrics.bubbleRadius : 0;
 
   return {
     x: metrics.startX + col * metrics.colWidth + offset,
@@ -189,7 +193,6 @@ function getBubblePosition(row, col) {
 function createInitialBubbles(rows) {
   bubbles = [];
   fieldOffsetY = 0;
-  gridRowShift = 0;
 
   const cols = getColumnCount();
 
@@ -267,14 +270,20 @@ function startScoreMode() {
   createShooterBubbles();
 }
 
+function stopAllAudio() {
+  for (const node of audioNodes) { try { node.stop(); } catch (e) {} }
+  audioNodes.clear();
+}
+
 function playSound(type) {
-  if (!soundEnabled) return;
+  if (!soundEnabled || document.hidden || isAdShowing) return;
 
   try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const audio = new AudioContext();
-    const oscillator = audio.createOscillator();
-    const gain = audio.createGain();
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextCtor) return;
+    if (!audioCtx) audioCtx = new AudioContextCtor();
+    const oscillator = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
 
     let frequency = 350;
     let duration = 0.08;
@@ -298,13 +307,14 @@ function playSound(type) {
     oscillator.frequency.value = frequency;
 
     gain.gain.value = 0.045;
-    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + duration);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
 
     oscillator.connect(gain);
-    gain.connect(audio.destination);
-
+    gain.connect(audioCtx.destination);
+    audioNodes.add(oscillator);
+    oscillator.onended = () => audioNodes.delete(oscillator);
     oscillator.start();
-    oscillator.stop(audio.currentTime + duration);
+    oscillator.stop(audioCtx.currentTime + duration);
   } catch (error) {}
 }
 
@@ -519,8 +529,8 @@ function drawTopUI() {
     ctx.fillText("Режим на счёт", width / 2, 34);
   }
 
-  drawSmallButton(width - 96, 14, 36, 34, gameState === "paused" ? "▶" : "Ⅱ");
-  drawSmallButton(width - 52, 14, 38, 34, soundEnabled ? "🔊" : "🔇");
+  drawSmallButton(width - 112, 12, 48, 40, gameState === "paused" ? "▶" : "Ⅱ");
+  drawSmallButton(width - 56, 12, 48, 40, soundEnabled ? "🔊" : "🔇");
 
   ctx.restore();
 }
@@ -820,7 +830,6 @@ function updateSmoothDescent(deltaSec) {
 
   while (fieldOffsetY >= metrics.rowHeight) {
     fieldOffsetY -= metrics.rowHeight;
-    gridRowShift++;
 
     for (const bubble of bubbles) {
       if (!bubble.falling) {
@@ -915,7 +924,8 @@ function findNearestFreeCell(x, y) {
   let bestCell = null;
   let bestDistance = Infinity;
 
-  const approxRow = Math.max(0, Math.round((y - bubbleRadius * 2.4 - fieldOffsetY) / rowHeight));
+  const metrics = gridMetrics || { topY: bubbleRadius * 2.4, rowHeight };
+  const approxRow = Math.max(0, Math.round((y - metrics.topY - fieldOffsetY) / metrics.rowHeight));
 
   for (let row = Math.max(0, approxRow - 3); row <= approxRow + 3; row++) {
     for (let col = 0; col < cols; col++) {
@@ -967,8 +977,7 @@ function getNeighbors(target) {
     [1, 0], [1, 1]
   ];
 
-  const stableRow = target.row - gridRowShift;
-  const directions = isShiftedOddRow(stableRow) ? odd : even;
+  const directions = isShiftedOddRow(target.row) ? odd : even;
   const result = [];
 
   for (const [dr, dc] of directions) {
@@ -1130,6 +1139,7 @@ function checkGoals() {
 
   if (completed) {
     gameState = "levelcomplete";
+    showInterstitialAd();
 
     if (currentLevel >= maxOpenedLevel && currentLevel < 100) {
       maxOpenedLevel = currentLevel + 1;
@@ -1152,19 +1162,16 @@ function checkGameOver() {
 
     if (pos.y + bubbleRadius >= limit) {
       gameState = "gameover";
+      showInterstitialAd();
       playSound("lose");
       return;
     }
   }
 }
 
-function togglePause() {
-  if (gameState === "playing") {
-    gameState = "paused";
-  } else if (gameState === "paused") {
-    gameState = "playing";
-  }
-}
+function pauseGame() { if (gameState === "playing") { gameState = "paused"; stopAllAudio(); }}
+function resumeGame() { if (gameState === "paused" && !isAdShowing) gameState = "playing"; }
+function togglePause() { if (gameState === "playing") pauseGame(); else if (gameState === "paused") resumeGame(); }
 
 function restartCurrentMode() {
   if (gameMode === "levels") {
@@ -1180,13 +1187,13 @@ function handlePointerDown(x, y) {
   aimX = x;
   aimY = y;
 
-  if (isInside(x, y, width - 96, 14, 36, 34) && gameState !== "menu" && gameState !== "howto") {
+  if (isInside(x, y, width - 112, 12, 48, 40) && gameState !== "menu" && gameState !== "howto") {
     pointerStartedOnButton = true;
     togglePause();
     return;
   }
 
-  if (isInside(x, y, width - 52, 14, 38, 34) && gameState !== "howto") {
+  if (isInside(x, y, width - 56, 12, 48, 40) && gameState !== "howto") {
     pointerStartedOnButton = true;
     soundEnabled = !soundEnabled;
     localStorage.setItem(SAVE.sound, soundEnabled ? "on" : "off");
@@ -1263,7 +1270,7 @@ function handlePointerDown(x, y) {
 
     if (isInside(x, y, bx, by, 240, 54)) {
       pointerStartedOnButton = true;
-      gameState = "playing";
+      resumeGame();
       return;
     }
 
@@ -1277,6 +1284,7 @@ function handlePointerDown(x, y) {
       pointerStartedOnButton = true;
       gameState = "menu";
       flyingBubble = null;
+      stopAllAudio();
       return;
     }
   }
@@ -1388,11 +1396,8 @@ window.addEventListener("contextmenu", event => {
   event.preventDefault();
 });
 
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden && gameState === "playing") {
-    gameState = "paused";
-  }
-});
+document.addEventListener("visibilitychange", () => { if (document.hidden) pauseGame(); });
+window.addEventListener("blur", pauseGame);
 
 document.addEventListener("keydown", event => {
   if (event.code === "Escape" || event.code === "KeyP") {
@@ -1453,4 +1458,41 @@ aimX = width / 2;
 aimY = height / 2;
 
 createInitialBubbles(6);
+initYandexSDK().finally(() => notifyYandexReady());
 requestAnimationFrame(gameLoop);
+
+
+async function initYandexSDK() {
+  try {
+    if (window.YaGames && typeof window.YaGames.init === "function") {
+      ysdk = await window.YaGames.init();
+      if (ysdk?.features?.GameplayAPI) {
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) ysdk.features.GameplayAPI.stop?.();
+          else ysdk.features.GameplayAPI.start?.();
+        });
+      }
+    }
+  } catch (e) { ysdk = null; }
+}
+
+function notifyYandexReady() {
+  if (sdkReadyNotified) return;
+  sdkReadyNotified = true;
+  try { ysdk?.features?.LoadingAPI?.ready?.(); } catch (e) {}
+}
+
+function showInterstitialAd(callback) {
+  const done = () => { isAdShowing = false; callback?.(); };
+  pauseGame();
+  stopAllAudio();
+  if (!ysdk?.adv?.showFullscreenAdv) { done(); return; }
+  isAdShowing = true;
+  ysdk.adv.showFullscreenAdv({
+    callbacks: {
+      onClose: () => done(),
+      onError: () => done(),
+      onOffline: () => done()
+    }
+  });
+}
