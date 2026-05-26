@@ -583,12 +583,28 @@ function drawBigButton(x, y, w, h, text) {
   ctx.fill();
 
   ctx.fillStyle = "#1a2f5e";
-  ctx.font = "bold 21px Arial";
+  const fontSize = getBigButtonFontSize(text, w);
+  ctx.font = `bold ${fontSize}px Arial`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, x + w / 2, y + h / 2);
+  ctx.fillText(text, x + w / 2, y + h / 2 + 0.5);
 
   ctx.restore();
+}
+
+function getBigButtonFontSize(text, buttonWidth) {
+  const maxTextWidth = buttonWidth - 34;
+  let fontSize = 21;
+
+  while (fontSize > 15) {
+    ctx.font = `bold ${fontSize}px Arial`;
+    if (ctx.measureText(text).width <= maxTextWidth) {
+      return fontSize;
+    }
+    fontSize -= 1;
+  }
+
+  return 15;
 }
 
 function roundRect(x, y, w, h, r) {
@@ -817,10 +833,10 @@ function update(deltaMs) {
 
 function getCurrentDescentSpeed() {
   if (gameMode === "levels" && levelConfig) {
-    return levelConfig.descentSpeed;
+    return levelConfig.descentSpeed * 1.12;
   }
 
-  return 2.1 + Math.min(9, gameTime * 0.035);
+  return 2.35 + Math.min(9.6, gameTime * 0.039);
 }
 
 function updateSmoothDescent(deltaSec) {
