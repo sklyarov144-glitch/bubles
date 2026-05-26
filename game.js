@@ -734,13 +734,11 @@ function drawTopUI() {
     ctx.fillText(t("scoreMode"), width / 2, 34);
   }
 
-  const settingsX = width - (smallButtonW * 3 + gap * 3);
-  const pauseX = width - (smallButtonW * 2 + gap * 2);
-  const soundX = width - (smallButtonW + gap);
+  const settingsX = width - (smallButtonW * 2 + gap * 2);
+  const pauseX = width - (smallButtonW + gap);
   const canShowSettings = gameState !== "levelcomplete" && gameState !== "gameover";
   if (canShowSettings) drawSmallButton(settingsX, buttonsY, smallButtonW, smallButtonH, "⚙️");
   drawSmallButton(pauseX, buttonsY, smallButtonW, smallButtonH, gameState === "paused" ? "▶" : "Ⅱ");
-  drawSmallButton(soundX, buttonsY, smallButtonW, smallButtonH, soundEnabled ? "🔊" : "🔇");
 
   ctx.restore();
 }
@@ -859,7 +857,6 @@ function drawMenu() {
   drawBigButton(bx, by + 80, 240, 56, `${t("levels")}: ${maxOpenedLevel}/100`);
   drawBigButton(bx, by + 150, 240, 52, t("howToPlay"));
   drawBigButton(bx, by + 214, 240, 52, t("settings"));
-  drawBigButton(bx, by + 278, 240, 52, soundEnabled ? t("soundOn") : t("soundOff"));
 
   ctx.font = "15px Arial";
   ctx.fillStyle = "rgba(255,255,255,0.7)";
@@ -946,7 +943,7 @@ function drawPaused() {
 
 function getSettingsLayout() {
   const panelW = Math.min(360, width - 30);
-  const panelH = Math.min(390, height - 80);
+  const panelH = Math.min(460, height - 80);
   const panelX = (width - panelW) / 2;
   const panelY = (height - panelH) / 2;
   const bw = panelW - 56;
@@ -967,6 +964,7 @@ function getSettingsLayout() {
       en: { x: bx, y: panelY + 112 + (bh + buttonGap), w: bw, h: bh },
       tr: { x: bx, y: panelY + 112 + (bh + buttonGap) * 2, w: bw, h: bh }
     },
+    soundButton: { x: bx, y: panelY + 112 + (bh + buttonGap) * 3, w: bw, h: bh },
     closeButton: { x: width / 2 - 110, y: panelY + panelH - 72, w: 220, h: 52 }
   };
 }
@@ -977,7 +975,7 @@ function drawSettings() {
   ctx.fillStyle = "rgba(0,0,0,0.7)";
   ctx.fillRect(0, 0, width, height);
 
-  const { panelW, panelH, panelX, panelY, bw, bh, bx, langButtons, closeButton } = getSettingsLayout();
+  const { panelW, panelH, panelX, panelY, bw, bh, bx, langButtons, soundButton, closeButton } = getSettingsLayout();
 
   ctx.fillStyle = "rgba(8, 22, 45, 0.95)";
   roundRect(panelX, panelY, panelW, panelH, 18);
@@ -1001,6 +999,7 @@ function drawSettings() {
     drawBigButton(btn.x, btn.y, btn.w, btn.h, `${selected ? "✓ " : ""}${item[1]}`);
   });
 
+  drawBigButton(soundButton.x, soundButton.y, soundButton.w, soundButton.h, soundEnabled ? t("soundOn") : t("soundOff"));
   drawBigButton(closeButton.x, closeButton.y, closeButton.w, closeButton.h, t("close"));
   ctx.restore();
 }
@@ -1526,9 +1525,8 @@ function handlePointerDown(x, y) {
   const smallButtonW = Math.round(44 * uiScale);
   const smallButtonH = Math.round(38 * uiScale);
   const gap = Math.round(8 * uiScale);
-  const settingsX = width - (smallButtonW * 3 + gap * 3);
-  const pauseX = width - (smallButtonW * 2 + gap * 2);
-  const soundX = width - (smallButtonW + gap);
+  const settingsX = width - (smallButtonW * 2 + gap * 2);
+  const pauseX = width - (smallButtonW + gap);
 
   const canShowSettings = gameState !== "levelcomplete" && gameState !== "gameover";
   if (canShowSettings && isInside(x, y, settingsX, 10, smallButtonW, smallButtonH) && gameState !== "howto") {
@@ -1540,12 +1538,6 @@ function handlePointerDown(x, y) {
   if (isInside(x, y, pauseX, 10, smallButtonW, smallButtonH) && gameState !== "menu" && gameState !== "howto" && gameState !== "settings") {
     pointerStartedOnButton = true;
     togglePause();
-    return;
-  }
-
-  if (isInside(x, y, soundX, 10, smallButtonW, smallButtonH) && gameState !== "howto" && gameState !== "settings") {
-    pointerStartedOnButton = true;
-    toggleSound();
     return;
   }
 
@@ -1577,11 +1569,6 @@ function handlePointerDown(x, y) {
       return;
     }
 
-    if (isInside(x, y, bx, by + 278, 240, 52)) {
-      pointerStartedOnButton = true;
-      toggleSound();
-      return;
-    }
   }
 
   if (gameState === "howto") {
@@ -1593,11 +1580,12 @@ function handlePointerDown(x, y) {
   }
 
   if (gameState === "settings") {
-    const { langButtons, closeButton } = getSettingsLayout();
+    const { langButtons, soundButton, closeButton } = getSettingsLayout();
 
     if (isInside(x, y, langButtons.ru.x, langButtons.ru.y, langButtons.ru.w, langButtons.ru.h)) { pointerStartedOnButton = true; setLanguage("ru"); return; }
     if (isInside(x, y, langButtons.en.x, langButtons.en.y, langButtons.en.w, langButtons.en.h)) { pointerStartedOnButton = true; setLanguage("en"); return; }
     if (isInside(x, y, langButtons.tr.x, langButtons.tr.y, langButtons.tr.w, langButtons.tr.h)) { pointerStartedOnButton = true; setLanguage("tr"); return; }
+    if (isInside(x, y, soundButton.x, soundButton.y, soundButton.w, soundButton.h)) { pointerStartedOnButton = true; toggleSound(); return; }
     if (isInside(x, y, closeButton.x, closeButton.y, closeButton.w, closeButton.h)) { pointerStartedOnButton = true; closeSettings(); return; }
     return;
   }
